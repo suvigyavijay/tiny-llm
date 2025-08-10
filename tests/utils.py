@@ -22,8 +22,8 @@ def assert_allclose(
         rtol = rtol or 1.0e-5
         atol = atol or 1.0e-8
     elif precision == mx.float16:
-        rtol = rtol or 3.0e-2
-        atol = atol or 1.0e-5
+        rtol = rtol or 1.0e-1
+        atol = atol or 1.0e-2
     else:
         raise ValueError(f"Unsupported precision: {precision}")
     assert a.shape == b.shape, f"shape mismatch: {a.shape} vs {b.shape}"

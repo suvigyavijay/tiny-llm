@@ -40,7 +40,9 @@ private:
 };
 
 mx::array flash_attention(const mx::array &q, const mx::array &k, const mx::array &v, const mx::array &mask,
-                          const float scale, const int num_kv_heads, const int num_heads, mx::StreamOrDevice s = {});
+                          const float scale, const int num_kv_heads, const int num_heads, mx::StreamOrDevice s);
+
+mx::array paged_attention(const mx::array& q, mx::array& k_cache, mx::array& v_cache, const mx::array& page_table, mx::StreamOrDevice s);
 
 mx::array flash_attention_no_mask(const mx::array &q, const mx::array &k, const mx::array &v,
                                   const float scale, const int num_kv_heads, const int num_heads, mx::StreamOrDevice s = {});
@@ -64,6 +66,22 @@ private:
     float scale_;
     int num_kv_heads_;
     int num_heads_;
+};
+
+class PagedAttention : public mx::Primitive {
+public:
+    explicit PagedAttention(mx::Stream stream)
+        : mx::Primitive(stream) {};
+
+    void eval_cpu(const std::vector<mx::array> &inputs, std::vector<mx::array> &outputs) override;
+    void eval_gpu(const std::vector<mx::array> &inputs, std::vector<mx::array> &outputs) override;
+
+    std::pair<std::vector<mx::array>, std::vector<int>> vmap(const std::vector<mx::array> &inputs,
+                                                             const std::vector<int> &axes) override {
+        throw std::runtime_error("PagedAttention has no vmap implementation.");
+    }
+
+    const char *name() const override { return "PagedAttention"; }
 };
 
 }  // namespace tiny_llm_ext_ref

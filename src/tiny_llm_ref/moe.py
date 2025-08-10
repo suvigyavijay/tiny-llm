@@ -29,18 +29,19 @@ class MoE(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         gating_weights = self.gating(x)
-        top_k_weights, top_k_indices = mx.top_k(gating_weights, self.num_experts_per_tok)
+        top_k_indices = mx.topk(gating_weights, self.num_experts_per_tok)
         
         # This is a simplified implementation. A real implementation would use
         # more efficient routing and dispatching mechanisms.
         
         final_output = mx.zeros_like(x)
+        gating_weights_list = gating_weights.tolist()
         for i in range(x.shape[0]):
             for j in range(x.shape[1]):
                 token_output = mx.zeros_like(x[i, j])
                 for k in range(self.num_experts_per_tok):
-                    expert_idx = top_k_indices[i, j, k].item()
-                    weight = top_k_weights[i, j, k]
+                    expert_idx = int(top_k_indices[i, j, k].item())
+                    weight = gating_weights_list[i][j][expert_idx]
                     token_output += weight * self.experts[expert_idx](x[i, j])
                 final_output[i, j] = token_output
                 

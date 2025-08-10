@@ -27,6 +27,5 @@ class TestMoE:
         moe = MoE(hidden_dim=128, intermediate_dim=256, num_experts=8, num_experts_per_tok=2)
         x = mx.random.uniform(shape=(1, 10, 128))
         gating_weights = moe.gating(x)
-        top_k_weights, top_k_indices = mx.top_k(gating_weights, moe.num_experts_per_tok)
-        assert top_k_weights.shape == (1, 10, 2)
+        top_k_indices = mx.topk(gating_weights, moe.num_experts_per_tok)
         assert top_k_indices.shape == (1, 10, 2)

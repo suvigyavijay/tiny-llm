@@ -31,18 +31,7 @@ NB_MODULE(_ext, m) {
             array: ``a * b``
       )");
 
-    m.def("flash_attention", &tiny_llm_ext_ref::flash_attention, "query"_a, "key"_a, "value"_a, "mask"_a, "scale"_a = 1.0,
-          "num_kv_heads"_a, "num_heads"_a, "stream"_a = nb::none(), R"(
-        Flash attention layer
+    m.def("flash_attention", &tiny_llm_ext_ref::flash_attention, "q"_a, "k"_a, "v"_a, "mask"_a, "scale"_a, "num_kv_heads"_a, "num_heads"_a, "stream"_a = nb::none());
 
-        Args:
-            query (array): Query array.
-            key (array): Key array.
-            value (array): Value array.
-            mask (array): Mask array.
-            scale (float): Scaling factor.
-
-        Returns:
-            array: ``softmax(query @ key.T * scale) @ value``
-      )");
+    m.def("paged_attention", &tiny_llm_ext_ref::paged_attention, "q"_a, "k_cache"_a, "v_cache"_a, "page_table"_a, "stream"_a = nb::none());
 }

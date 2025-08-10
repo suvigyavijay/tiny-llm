@@ -73,4 +73,24 @@ It should load the model and print some text.
 
 In week 2, we will write some kernels in C++/Metal, and we will need to set up additional tools for that. We will cover it later.
 
+## Check your installation
+
+Run `pdm run check-installation`. You should see `Installation successful`.
+
+## Build the C++ Extensions
+
+This course uses C++ extensions to accelerate certain operations. To build the extensions, run the following command:
+
+```
+pdm run build-ext-ref
+```
+
+This will build the reference implementation of the extensions. If you want to build your own implementation, run:
+
+```
+pdm run build-ext
+```
+
+You will need to have a C++ compiler and CMake installed on your system.
+
 {{#include copyright.md}}
