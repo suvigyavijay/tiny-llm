@@ -6,9 +6,9 @@ In this chapter, you will implement a simplified MoE layer. This will give you a
 
 [📚 Reading: Mixture of Experts Explained](https://huggingface.co/blog/moe)
 
-## Task 1: Implement the MoE Layer
+## Task: Implement the MoE Layer
 
-Your task is to implement the `MoE` layer, along with the `Expert` and `Gating` classes.
+Your task is to implement the `MoE` layer, along with the `Expert` and `Gating` classes. We have included tests for various numbers of experts and different input ranks.
 
 ```
 src/tiny_llm/moe.py
@@ -26,5 +26,9 @@ pdm run test --week 3 --day 3
 ```
 
 This simplified implementation will give you a solid understanding of the core concepts behind MoE. In a production system, you would use more advanced techniques for routing and load balancing to ensure efficient use of hardware.
+
+```
+pdm run test-refsol tests_refsol/test_week_3_day_3.py
+```
 
 {{#include copyright.md}}

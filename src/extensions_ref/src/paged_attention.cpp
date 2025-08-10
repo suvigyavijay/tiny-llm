@@ -4,6 +4,7 @@
 #include "mlx/device.h"
 #include "mlx/utils.h"
 #include <iostream>
+#include <fstream>
 
 namespace tiny_llm_ext_ref {
     mx::array paged_attention(const mx::array& q, mx::array& k_cache, mx::array& v_cache, const mx::array& page_table, mx::StreamOrDevice s) {
@@ -37,8 +38,25 @@ namespace tiny_llm_ext_ref {
         compute_encoder.set_input_array(page_table, 3);
         compute_encoder.set_output_array(out, 4);
 
-        MTL::Size grid_dims = MTL::Size(q.size(), 1, 1);
-        MTL::Size group_dims = MTL::Size(kernel->maxTotalThreadsPerThreadgroup(), 1, 1);
+        const int B = q.shape(0);
+        const int n_heads = q.shape(1);
+        const int seq_len = q.shape(2);
+        const int head_dim = q.shape(3);
+        const int page_size = k_cache.shape(2);
+
+        compute_encoder.set_bytes(&n_heads, sizeof(int), 5);
+        compute_encoder.set_bytes(&head_dim, sizeof(int), 6);
+        compute_encoder.set_bytes(&page_size, sizeof(int), 7);
+        compute_encoder.set_bytes(&seq_len, sizeof(int), 8);
+
+        MTL::Size grid_dims = MTL::Size(B, n_heads, seq_len);
+        
+        NS::UInteger threadGroupSize = kernel->maxTotalThreadsPerThreadgroup();
+        if (threadGroupSize > seq_len) {
+            threadGroupSize = seq_len;
+        }
+        MTL::Size group_dims = MTL::Size(1, 1, threadGroupSize);
+
         compute_encoder.dispatch_threads(grid_dims, group_dims);
     }
 }

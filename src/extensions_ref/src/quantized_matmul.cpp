@@ -41,11 +41,11 @@ mx::array quantized_matmul(const mx::array &scales,         // Input array scale
     if (b.shape().size() != 2) {
         throw std::runtime_error("quantized_matmul: b must be a 2D array");
     }
-    if (bits != 4) {
-        throw std::runtime_error("quantized_matmul: bits must be 4");
+    if (bits != 2 && bits != 4 && bits != 8) {
+        throw std::runtime_error("quantized_matmul: bits must be 2, 4, or 8");
     }
-    if (group_size != 64) {
-        throw std::runtime_error("quantized_matmul: group_size must be 64");
+    if (group_size != 32 && group_size != 64) {
+        throw std::runtime_error("quantized_matmul: group_size must be 32 or 64");
     }
     auto out_shape = a.shape();
     if (out_shape.size() != 2) {
@@ -62,10 +62,10 @@ mx::array quantized_matmul(const mx::array &scales,         // Input array scale
     if (b.shape()[0] != scales.shape()[0]) {
         throw std::runtime_error("quantized_matmul: b must have the same number of rows as scales");
     }
-    if (b.shape()[1] != scales.shape()[1] * group_size / 8) {
+    if (a.shape()[1] != scales.shape()[1] * group_size) {
         throw std::runtime_error("quantized_matmul: a must have the same number of columns as scales");
     }
-    if (a.shape()[1] != b.shape()[1] * 8) {
+    if (a.shape()[1] * bits / 8 != b.shape()[1] * 4) {
         throw std::runtime_error("quantized_matmul: a must have the same number of columns as b");
     }
 
@@ -98,12 +98,11 @@ void quantized_matmul_impl(const mx::array &scales, const mx::array &biases, con
     // Launch the CPU kernel, TODO: support bfloat16
     encoder.dispatch([out_ptr = out.data<float16_t>(), out_shape = out.shape(), out_strides = out.strides(),
                       a = mx::array::unsafe_weak_copy(a), b = mx::array::unsafe_weak_copy(b),
-                      scales = mx::array::unsafe_weak_copy(scales), biases = mx::array::unsafe_weak_copy(biases)]() {
+                      scales = mx::array::unsafe_weak_copy(scales), biases = mx::array::unsafe_weak_copy(biases),
+                      group_size, bits]() {
         int M = a.shape()[0];
         int N = a.shape()[1];
         int K = b.shape()[0];
-        const int group_size = 64;
-        const int bits = 4;
         const int group_per_row = N / group_size;
         const float16_t *a_ptr = a.data<float16_t>();
         const uint32_t *b_ptr = b.data<uint32_t>();
@@ -120,14 +119,13 @@ void quantized_matmul_impl(const mx::array &scales, const mx::array &biases, con
                         mx::elem_to_loc(k * group_per_row + group_idx, biases.shape(), biases.strides());
                     float16_t scale = scales_ptr[scales_loc];
                     float16_t bias = biases_ptr[biases_loc];
-                    int64_t b_loc = mx::elem_to_loc((k * N + group_idx * group_size) / 8, b.shape(), b.strides());
+                    int64_t b_loc = mx::elem_to_loc((k * N + group_idx * group_size) * bits / 32, b.shape(), b.strides());
                     int64_t a_loc = mx::elem_to_loc(i * N + group_idx * group_size, a.shape(), a.strides());
                     const int packs_per_item = 32 / bits;
                     for (int item_idx = 0; item_idx < group_size; item_idx += packs_per_item) {
                         uint32_t b_val = b_ptr[b_loc];
-                        uint8_t *b_bytes = reinterpret_cast<uint8_t *>(&b_val);
                         for (int pack_idx = 0; pack_idx < packs_per_item; pack_idx++) {
-                            uint8_t item_val = (b_bytes[pack_idx / 2] >> ((pack_idx % 2) * bits)) & item_mask;
+                            uint8_t item_val = (b_val >> (pack_idx * bits)) & item_mask;
                             float b = static_cast<float>(item_val) * scale + bias;
                             float a = a_ptr[a_loc];
                             sum += a * b;
@@ -167,11 +165,11 @@ void QuantizedMatmul::eval_gpu(const std::vector<mx::array> &inputs, std::vector
 
     // Make a kernel from this metal library
     auto library = d.get_library("tiny_llm_ext_ref");
-    const char* kernel_name;
+    std::string kernel_name = "quantized_matmul_w" + std::to_string(bits_) + "a16_g" + std::to_string(group_size_);
     if (a.dtype() == mx::float16) {
-        kernel_name = "quantized_matmul_w4a16_g64_f16";
+        kernel_name += "_f16";
     } else if (a.dtype() == mx::bfloat16) {
-        kernel_name = "quantized_matmul_w4a16_g64_bf16";
+        kernel_name += "_bf16";
     } else {
         throw std::runtime_error("quantized_matmul: a must be float16 or bfloat16");
     }

@@ -64,10 +64,10 @@ class TinyKvFullCache(TinyKvCache):
             return new_keys, new_values, self.offset, mask
 ```
 
-After implementing `TinyKvFullCache`, you can run the following tests to verify your implementation:
+After implementing `TinyKvFullCache`, you can run the following tests to verify your implementation. We have included tests for shape mismatches and empty updates to ensure your implementation is robust.
 
 ```
-pdm run test --week 2 --day 1 -- -k task_1
+pdm run test-refsol tests_refsol/test_week_2_day_1.py
 ```
 
 {{#include copyright.md}}

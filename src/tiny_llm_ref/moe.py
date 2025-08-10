@@ -28,6 +28,12 @@ class MoE(nn.Module):
         self.num_experts_per_tok = num_experts_per_tok
 
     def __call__(self, x: mx.array) -> mx.array:
+        input_shape = x.shape
+        if len(input_shape) < 3:
+            x = x.reshape(1, -1, input_shape[-1])
+        elif len(input_shape) > 3:
+            x = x.reshape(-1, input_shape[-2], input_shape[-1])
+
         gating_weights = self.gating(x)
         top_k_indices = mx.topk(gating_weights, self.num_experts_per_tok)
         
@@ -45,4 +51,4 @@ class MoE(nn.Module):
                     token_output += weight * self.experts[expert_idx](x[i, j])
                 final_output[i, j] = token_output
                 
-        return final_output
+        return final_output.reshape(input_shape)

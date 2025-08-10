@@ -1,4 +1,6 @@
 import pytest
+import mlx.core as mx
+import mlx.nn as nn
 from .utils import *
 from .tiny_llm_base import (
     Qwen2ModelWeek2,
@@ -14,49 +16,110 @@ from mlx_lm import load
 
 
 class TestTask1:
-    def test_kv_cache_simple(self):
-        cache = TinyKvFullCache()
-        key = mx.ones((1, 8, 1, 32))
-        value = mx.ones((1, 8, 1, 32))
-        new_key, new_value, _, _ = cache.update_and_fetch(key, value)
-        assert new_key.shape == (1, 8, 1, 32)
-        assert new_value.shape == (1, 8, 1, 32)
-        assert mx.array_equal(new_key, key)
-        
-        key_2 = mx.zeros((1, 8, 1, 32))
-        value_2 = mx.zeros((1, 8, 1, 32))
-        new_key_2, new_value_2, _, _ = cache.update_and_fetch(key_2, value_2)
-        assert new_key_2.shape == (1, 8, 2, 32)
-        assert new_value_2.shape == (1, 8, 2, 32)
-        assert mx.array_equal(new_key_2, mx.concatenate([key, key_2], axis=2))
+    """
+    Tests for task 1, KV Cache.
+    """
 
-    def test_kv_cache_prefill(self):
-        cache = TinyKvFullCache()
-        key = mx.ones((1, 8, 10, 32))
-        value = mx.ones((1, 8, 10, 32))
-        new_key, new_value, _, _ = cache.update_and_fetch(key, value)
-        assert new_key.shape == (1, 8, 10, 32)
-        assert new_value.shape == (1, 8, 10, 32)
-        assert mx.array_equal(new_key, key)
-        
-        key_2 = mx.zeros((1, 8, 1, 32))
-        value_2 = mx.zeros((1, 8, 1, 32))
-        new_key_2, new_value_2, _, _ = cache.update_and_fetch(key_2, value_2)
-        assert new_key_2.shape == (1, 8, 11, 32)
-        assert new_value_2.shape == (1, 8, 11, 32)
-        assert mx.array_equal(new_key_2, mx.concatenate([key, key_2], axis=2))
-        
-    def test_offset_update(self):
-        cache = TinyKvFullCache()
-        assert cache.get_offset() == 0
-        key = mx.zeros((1, 8, 5, 32))
-        value = mx.zeros((1, 8, 5, 32))
-        cache.update_and_fetch(key, value)
-        assert cache.get_offset() == 5
-        key = mx.zeros((1, 8, 3, 32))
-        value = mx.zeros((1, 8, 3, 32))
-        cache.update_and_fetch(key, value)
-        assert cache.get_offset() == 8
+    @pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+    @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
+    def test_kv_cache_simple(self, stream: mx.Stream, precision: mx.Dtype):
+        """
+        Test `update_and_fetch` with a single token update.
+        """
+        with mx.stream(stream):
+            cache = TinyKvFullCache()
+            key = mx.ones((1, 8, 1, 32), dtype=precision)
+            value = mx.ones((1, 8, 1, 32), dtype=precision)
+            new_key, new_value, _, _ = cache.update_and_fetch(key, value)
+
+            assert new_key.shape == (1, 8, 1, 32)
+            assert new_value.shape == (1, 8, 1, 32)
+            assert_allclose(new_key, key, precision=precision)
+
+            key_2 = mx.zeros((1, 8, 1, 32), dtype=precision)
+            value_2 = mx.zeros((1, 8, 1, 32), dtype=precision)
+            new_key_2, new_value_2, _, _ = cache.update_and_fetch(key_2, value_2)
+
+            assert new_key_2.shape == (1, 8, 2, 32)
+            assert new_value_2.shape == (1, 8, 2, 32)
+            expected_key = mx.concatenate([key, key_2], axis=2)
+            assert_allclose(new_key_2, expected_key, precision=precision)
+
+    @pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+    @pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
+    def test_kv_cache_prefill(self, stream: mx.Stream, precision: mx.Dtype):
+        """
+        Test `update_and_fetch` with a prefill of multiple tokens.
+        """
+        with mx.stream(stream):
+            cache = TinyKvFullCache()
+            key = mx.ones((1, 8, 10, 32), dtype=precision)
+            value = mx.ones((1, 8, 10, 32), dtype=precision)
+            new_key, new_value, _, _ = cache.update_and_fetch(key, value)
+
+            assert new_key.shape == (1, 8, 10, 32)
+            assert new_value.shape == (1, 8, 10, 32)
+            assert_allclose(new_key, key, precision=precision)
+
+            key_2 = mx.zeros((1, 8, 1, 32), dtype=precision)
+            value_2 = mx.zeros((1, 8, 1, 32), dtype=precision)
+            new_key_2, new_value_2, _, _ = cache.update_and_fetch(key_2, value_2)
+            assert new_key_2.shape == (1, 8, 11, 32)
+            assert new_value_2.shape == (1, 8, 11, 32)
+            expected_key = mx.concatenate([key, key_2], axis=2)
+            assert_allclose(new_key_2, expected_key, precision=precision)
+
+    @pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+    def test_offset_update(self, stream: mx.Stream):
+        """
+        Test if the offset is updated correctly after each `update_and_fetch` call.
+        """
+        with mx.stream(stream):
+            cache = TinyKvFullCache()
+            assert cache.get_offset() == 0
+
+            key = mx.zeros((1, 8, 5, 32))
+            value = mx.zeros((1, 8, 5, 32))
+            cache.update_and_fetch(key, value)
+            assert cache.get_offset() == 5
+
+            key = mx.zeros((1, 8, 3, 32))
+            value = mx.zeros((1, 8, 3, 32))
+            cache.update_and_fetch(key, value)
+            assert cache.get_offset() == 8
+
+    @pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+    def test_kv_cache_empty_update(self, stream: mx.Stream):
+        """
+        Test that updating with empty tensors does not change the cache.
+        """
+        with mx.stream(stream):
+            cache = TinyKvFullCache()
+            key = mx.ones((1, 8, 1, 32))
+            value = mx.ones((1, 8, 1, 32))
+            cache.update_and_fetch(key, value)
+
+            # Empty update
+            key_empty = mx.zeros((1, 8, 0, 32))
+            value_empty = mx.zeros((1, 8, 0, 32))
+            new_key, new_value, _, _ = cache.update_and_fetch(key_empty, value_empty)
+
+            assert new_key.shape == (1, 8, 1, 32)
+            assert new_value.shape == (1, 8, 1, 32)
+            assert cache.get_offset() == 1
+            assert_allclose(new_key, key, precision=mx.float32)
+
+    @pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+    def test_kv_cache_shape_mismatch(self, stream: mx.Stream):
+        """
+        Test that a ValueError is raised for shape mismatches between key and value.
+        """
+        with mx.stream(stream):
+            cache = TinyKvFullCache()
+            key = mx.ones((1, 8, 1, 32))
+            value_wrong_shape = mx.ones((1, 8, 2, 32))
+            with pytest.raises(ValueError):
+                cache.update_and_fetch(key, value_wrong_shape)
 
 
 @pytest.mark.skipif(

@@ -23,9 +23,9 @@ graph TD
     G --> H[Output Matrix];
 ```
 
-## Task 1: Implement `quantized_matmul` on CPU
+## Task: Implement `quantized_matmul` on CPU
 
-Your first task is to implement the `quantized_matmul` function in C++. This function will perform matrix multiplication where one of the matrices (the weights) is quantized.
+Your task is to implement the `quantized_matmul` function in C++. This function will perform matrix multiplication where one of the matrices (the weights) is quantized. We have expanded the C++ extension to support 2, 4, and 8-bit quantization with group sizes of 32 and 64.
 
 ```
 src/extensions/src/quantized_matmul.cpp
@@ -51,10 +51,10 @@ src/tiny_llm/quantize.py
 
 The `quantized_linear` function will take a `QuantizedWeights` object, which holds the quantized weights and their metadata, and an input tensor. It will call the C++ `quantized_matmul` function through the Python bindings and return the result.
 
-You can run the following tests to verify your implementation:
+You can run the following tests to verify your implementation. We have included tests for various matrix dimensions, group sizes, and bit depths.
 
 ```
-pdm run test --week 2 --day 2
+pdm run test-refsol tests_refsol/test_week_2_day_2.py
 ```
 
 {{#include copyright.md}}

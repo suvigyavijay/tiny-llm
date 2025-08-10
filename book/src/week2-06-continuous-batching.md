@@ -6,9 +6,9 @@ Continuous batching is a more advanced technique that addresses this issue. Inst
 
 [📚 Reading: Optimizing LLM Serving with Continuous Batching](https://www.databricks.com/blog/llm-serving-simplified-nvidias-tensorrt-llm)
 
-## Task 1: Implement Continuous Batching
+## Task: Implement Continuous Batching
 
-In this task, you will implement the `batch_generate` function, which orchestrates the continuous batching process.
+In this task, you will implement the `batch_generate` function, which orchestrates the continuous batching process. We have included tests for various numbers of prompts, prompt lengths, and empty prompts.
 
 ```
 src/tiny_llm/batch.py
@@ -25,7 +25,7 @@ You will also need to implement the `Request` class, which encapsulates the stat
 You can run the following tests to verify your implementation:
 
 ```
-pdm run test --week 2 --day 6
+pdm run test-refsol tests_refsol/test_week_2_day_6.py
 ```
 
 {{#include copyright.md}}

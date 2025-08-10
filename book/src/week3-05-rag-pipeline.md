@@ -6,9 +6,9 @@ In this chapter, you will implement a simple RAG pipeline. This will give you a 
 
 [📚 Reading: Retrieval-Augmented Generation (RAG)](https://aws.amazon.com/what-is/retrieval-augmented-generation/)
 
-## Task 1: Implement the RAG Pipeline
+## Task: Implement the RAG Pipeline
 
-Your task is to implement a RAG pipeline that consists of a knowledge base, a retriever, and a generator.
+Your task is to implement a RAG pipeline that consists of a knowledge base, a retriever, and a generator. We have included tests for basic retrieval, no relevant documents, and multiple relevant documents.
 
 ```
 src/tiny_llm/rag.py
@@ -26,5 +26,9 @@ pdm run test --week 3 --day 5
 ```
 
 This simplified RAG pipeline will serve as a starting point for building more sophisticated systems. In a real-world application, you would use more advanced techniques for retrieval, such as vector search, and you would likely use a much larger and more diverse knowledge base.
+
+```
+pdm run test-refsol tests_refsol/test_week_3_day_5.py
+```
 
 {{#include copyright.md}}

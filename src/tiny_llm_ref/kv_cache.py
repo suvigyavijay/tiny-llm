@@ -123,6 +123,10 @@ class TinyKvFullCache(TinyKvCache):
         mask_length: int | None = None,
         mask: mx.array | str | None = None,
     ) -> tuple[mx.array, mx.array, int, Optional[mx.array]]:
+        if key.shape != value.shape:
+            raise ValueError(
+                f"Key and value shapes must match, but got {key.shape} and {value.shape}"
+            )
         if self.key_values is None:
             assert self.offset == 0
             self.key_values = (key, value)

@@ -6,9 +6,9 @@ Paged attention addresses the problem of memory fragmentation and inefficiency i
 
 [📚 Reading: PagedAttention for Large Language Models](https://vllm.ai/posts/2023-06-20-pagedattention.html)
 
-## Task 1: Implement Paged Attention Data Structures
+## Task: Implement Paged Attention Data Structures
 
-In this first part of the paged attention implementation, we will focus on the core data structures that will form the foundation of our memory manager.
+In this first part of the paged attention implementation, we will focus on the core data structures that will form the foundation of our memory manager. We have included tests for various allocation and deallocation scenarios.
 
 ```
 src/tiny_llm/paged_attention.py
@@ -28,5 +28,9 @@ pdm run test --week 3 --day 1
 ```
 
 In the next chapter, we will build upon these data structures to implement the full paged attention algorithm.
+
+```
+pdm run test-refsol tests_refsol/test_week_3_day_1.py
+```
 
 {{#include copyright.md}}

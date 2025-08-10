@@ -1,48 +1,60 @@
 import pytest
-from .utils import *
-from extensions_ref import tiny_llm_ext_ref
-from tiny_llm_ref.attention import scaled_dot_product_attention_simple as scaled_dot_product_attention
+import mlx.core as mx
+from tiny_llm_ref.attention import flash_attention
+import numpy as np
 
-def flash_attention_ref(q, k, v, mask, scale):
-    if k.shape[0] != q.shape[0]:
-        k = mx.repeat(k, q.shape[0] // k.shape[0], axis=0)
-    if v.shape[0] != q.shape[0]:
-        v = mx.repeat(v, q.shape[0] // v.shape[0], axis=0)
-    # The reference implementation uses the standard scaled dot product attention
-    return scaled_dot_product_attention(q, k, v, mask=mask, scale=scale)
+def softmax(x):
+    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return e_x / np.sum(e_x, axis=-1, keepdims=True)
 
-@pytest.mark.skipif(
-    not mx.metal.is_available(), reason="Metal is not available"
-)
-class TestFlashAttentionGPU:
-    def test_flash_attention_gpu(self):
-        q = mx.random.uniform(shape=(8, 128, 64)).astype(mx.float32)
-        k = mx.random.uniform(shape=(8, 128, 64)).astype(mx.float32)
-        v = mx.random.uniform(shape=(8, 128, 64)).astype(mx.float32)
-        mask = mx.zeros((8, 128, 128), dtype=mx.float32)
-        scale = 1.0 / np.sqrt(64)
+def flash_attention_ref_py(q, k, v, scale):
+    q_np = np.array(q, copy=False)
+    k_np = np.array(k, copy=False)
+    v_np = np.array(v, copy=False)
 
-        # Run the Flash Attention implementation
-        with mx.stream(mx.gpu):
-            flash_out = tiny_llm_ext_ref.flash_attention(q, k, v, mask, scale, 8, 8)
+    B, H_q, L, E = q_np.shape
+    B, H_k, S, E = k_np.shape
+    
+    if H_q != H_k:
+        # Grouped Query Attention
+        num_groups = H_q // H_k
+        k_np = np.repeat(k_np, num_groups, axis=1)
+        v_np = np.repeat(v_np, num_groups, axis=1)
 
-        # Run the reference implementation
-        ref_out = flash_attention_ref(q, k, v, mask, scale)
-        
-        assert_allclose(flash_out, ref_out, atol=1e-5, rtol=1e-5, precision=mx.float32)
+    scores = (q_np @ k_np.transpose(0, 1, 3, 2)) * scale
+    scores = softmax(scores)
+    output = scores @ v_np
+    return mx.array(output)
 
-    def test_flash_attention_gpu_gqa(self):
-        q = mx.random.uniform(shape=(8, 128, 64)).astype(mx.float32)
-        k = mx.random.uniform(shape=(4, 128, 64)).astype(mx.float32)
-        v = mx.random.uniform(shape=(4, 128, 64)).astype(mx.float32)
-        mask = mx.zeros((8, 128, 128), dtype=mx.float32)
-        scale = 1.0 / np.sqrt(64)
+@pytest.mark.parametrize("H_q", [4, 8])
+@pytest.mark.parametrize("H_k", [1, 2, 4])
+@pytest.mark.parametrize("L", [16, 32])
+@pytest.mark.parametrize("E", [32, 64])
+@pytest.mark.parametrize("S", [16, 32])
+@pytest.mark.parametrize("BATCH", [1, 2])
+def test_flash_attention_gpu(H_q, H_k, L, E, S, BATCH):
+    if H_q % H_k != 0:
+        pytest.skip("H_q must be divisible by H_k")
 
-        # Run the Flash Attention implementation
-        with mx.stream(mx.gpu):
-            flash_out = tiny_llm_ext_ref.flash_attention(q, k, v, mask, scale, 4, 8)
+    precision = mx.float32
+    q_shape = (BATCH, H_q, L, E)
+    kv_shape = (BATCH, H_k, S, E)
+    scale = 0.9
 
-        # Run the reference implementation
-        ref_out = flash_attention_ref(q, k, v, mask, scale)
-        
-        assert_allclose(flash_out, ref_out, atol=1e-5, rtol=1e-5, precision=mx.float32)
+    query = mx.random.uniform(shape=q_shape, dtype=precision)
+    key = mx.random.uniform(shape=kv_shape, dtype=precision)
+    value = mx.random.uniform(shape=kv_shape, dtype=precision)
+
+    reference_output = flash_attention_ref_py(
+        query,
+        key,
+        value,
+        scale=scale,
+    )
+    user_output = flash_attention(
+        query,
+        key,
+        value,
+        scale=scale,
+    )
+    assert np.allclose(np.array(user_output), np.array(reference_output), atol=1e-5)

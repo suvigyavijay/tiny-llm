@@ -6,9 +6,9 @@ In this chapter, we will implement a simplified version of Flash Attention 2 on 
 
 [📚 Reading: FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning](https://arxiv.org/abs/2307.08691)
 
-## Task 1: Implement Flash Attention on CPU
+## Task: Implement Flash Attention on CPU
 
-Your task is to implement the `FlashAttention::eval_cpu` function in C++. This function will perform the Flash Attention computation.
+Your task is to implement the `FlashAttention::eval_cpu` function in C++. This function will perform the Flash Attention computation. We have included tests for GQA and causal masking.
 
 ```
 src/extensions/src/flash_attention.cpp
@@ -29,7 +29,7 @@ pdm run build-ext
 You can run the following tests to verify your implementation:
 
 ```
-pdm run test --week 2 --day 4
+pdm run test-refsol tests_refsol/test_week_2_day_4.py
 ```
 
 {{#include copyright.md}}

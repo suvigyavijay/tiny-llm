@@ -28,9 +28,15 @@ class Request:
         self.kv_cache = [TinyKvFullCache() for _ in range(model.num_hidden_layers)]
         self.model = model
         self.detokenizer = tokenizer.detokenizer.__class__(tokenizer._tokenizer)
-        self.prefill_tokens = mx.array(
-            tokenizer.encode(prompt, add_special_tokens=False)
-        )
+        tokens = tokenizer.encode(prompt, add_special_tokens=False)
+        if isinstance(tokens, list):
+            self.prefill_tokens = mx.array(tokens)
+        else:
+            self.prefill_tokens = tokens
+        
+        if self.prefill_tokens.size == 0:
+            self.prefill_tokens = mx.array([tokenizer.eos_token_id])
+
         self.prefill_max_step = prefill_max_step
         self.is_done = False
         self.is_prefill_done = False
@@ -77,6 +83,9 @@ class Request:
     def text(self):
         return self.detokenizer.text
 
+    def is_finished(self):
+        return self.is_done or (self.is_prefill_done and self.next_token is None)
+
 
 def _print_progress(
     requests: list[Request | None],
@@ -120,13 +129,16 @@ def batch_generate(
     tokenizer: TokenizerWrapper,
     prompts: list[str],
     max_seq_len=512,
-    batch_size=5,
+    max_active_requests=5,
     prefill_step=128,
 ):
-    decode_requests: list[Request] = [None] * batch_size
-    is_idle = [True] * batch_size
+    if len(prompts) > max_active_requests:
+        raise ValueError(f"Number of prompts ({len(prompts)}) exceeds max_active_requests ({max_active_requests})")
+    
+    decode_requests: list[Request] = [None] * max_active_requests
+    is_idle = [True] * max_active_requests
     kv_cache = [
-        BatchingKvCache(max_active_requests=batch_size, max_seq_len=max_seq_len)
+        BatchingKvCache(max_active_requests=max_active_requests, max_seq_len=max_seq_len)
         for _ in range(model.num_hidden_layers)
     ]
     result = []
@@ -155,7 +167,7 @@ def batch_generate(
             if pending_prefill_request.is_prefill_done:
                 prefill_kv_cache = pending_prefill_request.kv_cache
                 found_slot = False
-                for i in range(batch_size):
+                for i in range(max_active_requests):
                     if is_idle[i]:
                         # Add this request to the decode requests
                         is_idle[i] = False
@@ -194,7 +206,7 @@ def batch_generate(
             next_tokens = mx.array(next_tokens)
             # decode
             next_tokens = _step(model, next_tokens.reshape(-1, 1), offsets, kv_cache)
-            for i in range(batch_size):
+            for i in range(max_active_requests):
                 if not is_idle[i]:
                     req = decode_requests[i]
                     remove_reason = None
@@ -208,7 +220,7 @@ def batch_generate(
                         )
                         batch_cache.remove_request(i)
                         is_idle[i] = True
-                        result.append((req.prompt_idx, req.text()))
+                        result.append((req.prompt_idx, req.prompt + req.text()))
                         decode_requests[i] = None
                         continue
                     req.decode_done(next_tokens[i].item())

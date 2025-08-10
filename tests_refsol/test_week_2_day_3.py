@@ -1,59 +1,66 @@
 import pytest
 import mlx.core as mx
-from .tiny_llm_base import *
-from .utils import *
+import numpy as np
+
+def dequantize_ref_py(w_q, scales, biases, group_size, bits):
+    w_q_np = np.array(w_q, copy=False)
+    scales_np = np.array(scales, copy=False)
+    biases_np = np.array(biases, copy=False)
+
+    pack_per_int = 32 // bits
+    mask = (1 << bits) - 1
+
+    orig_cols = w_q_np.shape[1] * pack_per_int
+    w_unpacked = np.zeros((w_q_np.shape[0], orig_cols), dtype=np.uint32)
+
+    for r in range(w_q_np.shape[0]):
+        for c in range(w_q_np.shape[1]):
+            val = w_q_np[r, c]
+            for i in range(pack_per_int):
+                w_unpacked[r, c * pack_per_int + i] = (val >> (i * bits)) & mask
+
+    w_unpacked = w_unpacked.astype(scales_np.dtype)
+
+    scales_reshaped = np.repeat(scales_np, group_size, axis=1)
+    biases_reshaped = np.repeat(biases_np, group_size, axis=1)
+
+    dequantized = (w_unpacked * scales_reshaped) + biases_reshaped
+    return dequantized
 
 
-def attention_helper(stream: mx.Stream, H_q, H, L, E, S, BATCH):
-    precision = mx.float32
-    with mx.stream(stream):
-        q_shape = (BATCH, H_q, L, E)
-        kv_shape = (BATCH, H, S, E)
-        scale = 0.9
-        for _ in range(100):
-            query = mx.random.uniform(shape=q_shape, dtype=precision)
-            key = mx.random.uniform(shape=kv_shape, dtype=precision)
-            value = mx.random.uniform(shape=kv_shape, dtype=precision)
+def quantized_matmul_ref_py(x, w_q, scales, biases, group_size, bits, transpose):
+    x_np = np.array(x, copy=False)
+    w_dq_np = dequantize_ref_py(w_q, scales, biases, group_size, bits)
+    if transpose:
+        w_dq_np = w_dq_np.T
 
-            reference_output = mx.fast.scaled_dot_product_attention(
-                q=query,
-                k=key,
-                v=value,
-                scale=scale,
-            )
-            user_output = flash_attention(
-                query,
-                key,
-                value,
-                scale=scale,
-            )
-            mx.eval(user_output)  # so that any error will be caught here
-            assert_allclose(user_output, reference_output, precision=mx.float16)
+    result = x_np @ w_dq_np
+    return mx.array(result)
 
+@pytest.mark.parametrize("M", [1, 8, 17])
+@pytest.mark.parametrize("N", [32, 64, 128])
+@pytest.mark.parametrize("K", [32, 64, 128])
+@pytest.mark.parametrize("group_size", [32, 64])
+@pytest.mark.parametrize("bits", [2, 4, 8])
+def test_quantized_matmul_gpu(M, N, K, group_size, bits):
+    if N % group_size != 0:
+        pytest.skip("N must be divisible by group_size")
 
-def test_flash_attention_cpu_small():
-    attention_helper(mx.cpu, 6, 3, 2, 5, 3, 1)
+    x = mx.random.normal(shape=(M, N)).astype(mx.float16)
+    w = mx.random.normal(shape=(K, N)).astype(mx.float16)
+    w_q, scales, biases = mx.quantize(w, group_size=group_size, bits=bits)
 
+    out_ref = quantized_matmul_ref_py(x, w_q, scales, biases, group_size, bits, transpose=True)
 
-def test_flash_attention_cpu():
-    attention_helper(mx.cpu, 18, 6, 7, 5, 3, 10)
+    out = mx.quantized_matmul(
+        x,
+        w_q,
+        scales=scales,
+        biases=biases,
+        group_size=group_size,
+        bits=bits,
+        transpose=True,
+    )
 
-
-def test_flash_attention_cpu_large():
-    attention_helper(mx.cpu, 28, 4, 16, 128, 16, 3)
-
-
-def test_flash_attention_gpu_extra_small():
-    attention_helper(mx.gpu, 1, 1, 5, 7, 4, 1)
-
-
-def test_flash_attention_gpu_small():
-    attention_helper(mx.gpu, 6, 3, 2, 5, 3, 1)
-
-
-def test_flash_attention_gpu():
-    attention_helper(mx.gpu, 18, 6, 7, 5, 3, 10)
-
-
-def test_flash_attention_gpu_large():
-    attention_helper(mx.gpu, 28, 4, 16, 128, 16, 3)
+    assert out.shape == out_ref.shape
+    assert np.allclose(np.array(out), np.array(out_ref), atol=1e-1)

@@ -27,9 +27,12 @@ def speculative_decode(
     # a more sophisticated acceptance/rejection mechanism.
     
     accepted_tokens = []
-    for i in range(gamma):
+    if draft_tokens.size == 0:
+        return accepted_tokens
+        
+    for i in range(len(draft_tokens)):
         if mx.argmax(target_probs[i]) == draft_tokens[i]:
-            accepted_tokens.append(draft_tokens[i])
+            accepted_tokens.append(draft_tokens[i].item())
         else:
             # If a token is rejected, we would typically sample a new token
             # from the target model's distribution and stop.

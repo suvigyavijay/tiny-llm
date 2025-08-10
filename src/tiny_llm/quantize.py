@@ -1,5 +1,6 @@
 import mlx.core as mx
 from typing import Any
+from tiny_llm_ext import quantized_matmul as ext_quantized_matmul
 
 
 def dequantize_linear(mx_layer: Any) -> mx.array:
@@ -39,21 +40,10 @@ class QuantizedWeights:
         )
 
 
-def quantized_matmul(
-    scales: mx.array,
-    biases: mx.array,
-    group_size: int,
-    bits: int,
-    a: mx.array,
-    b: mx.array,
-    transpose_b: bool = False,
-) -> mx.array:
-    pass
-
-
 def quantized_linear(
     x: mx.array,
     w: QuantizedWeights,
     bias: mx.array | None = None,
 ) -> mx.array:
+    # TODO: implement
     pass

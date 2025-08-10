@@ -15,7 +15,9 @@ class Agent:
         # This is a simplified implementation of an agent.
         # A real implementation would involve more sophisticated prompt engineering,
         # tool selection, and execution logic.
-        
+        if not self.tools:
+            return "I don't have any tools."
+
         prompt = "You have the following tools available:\n"
         for tool in self.tools.values():
             prompt += f"- {tool.name}: {tool.description}\n"
@@ -28,7 +30,10 @@ class Agent:
             # For simplicity, we assume the tool doesn't require any arguments.
             # A real implementation would need to parse the arguments from the
             # user's query.
-            result = self.tools[tool_name].func()
-            return f"Executed tool '{tool_name}' and got the result: {result}"
+            try:
+                result = self.tools[tool_name].func()
+                return f"Executed tool '{tool_name}' and got the result: {result}"
+            except Exception as e:
+                return f"Error executing tool '{tool_name}': {e}"
         else:
             return "I don't have a tool for that."

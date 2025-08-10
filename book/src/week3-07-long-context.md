@@ -6,9 +6,9 @@ Sliding window attention is a simple but effective technique that limits the att
 
 [📚 Reading: Long-Context Language Modeling with Parallel Context Encoding](https://arxiv.org/abs/2207.03170)
 
-## Task 1: Implement Sliding Window Attention
+## Task: Implement Sliding Window Attention
 
-Your task is to implement the `sliding_window_attention` function.
+Your task is to implement the `sliding_window_attention` function. We have included tests for various window sizes and causal masking.
 
 ```
 src/tiny_llm/long_context.py
@@ -23,7 +23,7 @@ This simplified implementation will give you a basic understanding of how slidin
 You can run the following tests to verify your implementation:
 
 ```
-pdm run test --week 3 --day 7
+pdm run test-refsol tests_refsol/test_week_3_day_7.py
 ```
 
 Congratulations on completing the tiny-llm course! You have built a sophisticated LLM inference engine from scratch and have learned about some of the most advanced techniques used in modern LLM serving. We hope this course has provided you with a solid foundation for your future work in this exciting field.

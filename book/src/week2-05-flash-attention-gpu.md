@@ -2,11 +2,12 @@
 
 Now that you have a solid understanding of the Flash Attention algorithm from the CPU implementation, it's time to unleash its full potential by running it on the GPU. In this chapter, you will implement the Flash Attention kernel in Metal and the corresponding C++ code to launch it.
 
-## Task 1: Implement the Flash Attention Metal Kernel
+## Task: Implement Flash Attention on GPU
 
-Your first task is to implement the `flash_attention` kernel in Metal.
+Your task is to implement the `FlashAttention::eval_gpu` function in C++ and the `flash_attention` kernel in Metal. We have included tests for GQA and causal masking.
 
 ```
+src/extensions/src/flash_attention.cpp
 src/extensions/src/flash_attention.metal
 ```
 
@@ -40,7 +41,7 @@ pdm run build-ext
 You can run the following tests to verify your implementation:
 
 ```
-pdm run test --week 2 --day 5
+pdm run test-refsol tests_refsol/test_week_2_day_5.py
 ```
 
 {{#include copyright.md}}

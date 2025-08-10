@@ -19,9 +19,9 @@ graph TD
     end
 ```
 
-## Task 1: Implement the Metal Kernel
+## Task: Implement the Metal Kernel
 
-The first step is to write the Metal kernel that will perform the quantized matrix multiplication.
+The first step is to write the Metal kernel that will perform the quantized matrix multiplication. We have expanded the Metal kernel to support 2, 4, and 8-bit quantization with group sizes of 32 and 64.
 
 ```
 src/extensions/src/quantized_matmul.metal
@@ -52,10 +52,10 @@ After implementing the C++ and Metal code, you need to rebuild the extension:
 pdm run build-ext
 ```
 
-You can run the following tests to verify your implementation:
+You can run the following tests to verify your implementation. We have included tests for various matrix dimensions, group sizes, and bit depths.
 
 ```
-pdm run test --week 2 --day 3
+pdm run test-refsol tests_refsol/test_week_2_day_3.py
 ```
 
 {{#include copyright.md}}

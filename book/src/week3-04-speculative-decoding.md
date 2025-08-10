@@ -4,9 +4,9 @@ Speculative decoding is an innovative technique that can significantly accelerat
 
 [📚 Reading: Speculative Decoding](https://huggingface.co/docs/transformers/main/en/llm_tutorial/faster_generation_speculative_decoding)
 
-## Task 1: Implement Speculative Decoding
+## Task: Implement Speculative Decoding
 
-In this task, you will implement a simplified version of the speculative decoding algorithm.
+In this task, you will implement a simplified version of the speculative decoding algorithm. We have included tests for various acceptance and rejection scenarios, as well as for empty drafts.
 
 ```
 src/tiny_llm/speculative.py
@@ -23,7 +23,7 @@ This simplified implementation will give you a solid understanding of the core c
 You can run the following tests to verify your implementation:
 
 ```
-pdm run test --week 3 --day 4
+pdm run test-refsol tests_refsol/test_week_3_day_4.py
 ```
 
 {{#include copyright.md}}
