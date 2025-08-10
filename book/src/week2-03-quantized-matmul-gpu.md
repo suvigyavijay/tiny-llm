@@ -4,6 +4,21 @@ In the previous chapter, we implemented quantized matrix multiplication on the C
 
 [📚 Reading: Introduction to Metal for Developers](https://developer.apple.com/metal/)
 
+```mermaid
+graph TD
+    A[Grid] --> B[Threadgroup];
+    A --> C[Threadgroup];
+    A --> D[...];
+    
+    B --> E[Thread];
+    B --> F[Thread];
+    B --> G[...];
+    
+    subgraph GPU
+        A
+    end
+```
+
 ## Task 1: Implement the Metal Kernel
 
 The first step is to write the Metal kernel that will perform the quantized matrix multiplication.
@@ -12,7 +27,7 @@ The first step is to write the Metal kernel that will perform the quantized matr
 src/extensions/src/quantized_matmul.metal
 ```
 
-The Metal kernel will be similar in logic to the C++ CPU implementation, but it will be executed in parallel by many threads on the GPU. Each thread will be responsible for calculating a single element in the output matrix. The kernel will receive the quantized weights, scales, biases, and the input matrix as buffers.
+The Metal kernel will be similar in logic to the C++ CPU implementation, but it will be executed in parallel by many threads on the GPU. Each thread will be responsible for calculating a single element in the output matrix. The kernel will receive the quantized weights, scales, biases, and the input matrix as buffers. The `[[kernel]]` qualifier indicates that this is a Metal kernel function, and the `device` address space qualifier indicates that the buffers are stored in device memory.
 
 Your task is to implement the `quantized_matmul_w4a16_g64` kernel. This kernel will dequantize the weights and perform the multiplication and accumulation in a loop.
 
@@ -26,10 +41,10 @@ src/extensions/src/quantized_matmul.cpp
 
 You will need to implement the `QuantizedMatmul::eval_gpu` function. This function will:
 1. Get the Metal device and command encoder.
-2. Get the compiled Metal kernel from the library.
-3. Set the input and output buffers for the kernel.
-4. Define the grid and threadgroup sizes.
-5. Dispatch the kernel for execution.
+2. Get the compiled Metal kernel from the library. The kernel is compiled from the `.metal` file when you build the extension.
+3. Set the input and output buffers for the kernel. This involves passing the `mx::array` objects to the command encoder.
+4. Define the grid and threadgroup sizes. The grid size determines the total number of threads, and the threadgroup size determines how the threads are grouped together.
+5. Dispatch the kernel for execution. This will launch the kernel on the GPU.
 
 After implementing the C++ and Metal code, you need to rebuild the extension:
 

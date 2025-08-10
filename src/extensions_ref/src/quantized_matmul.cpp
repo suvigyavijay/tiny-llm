@@ -204,17 +204,19 @@ void QuantizedMatmul::eval_gpu(const std::vector<mx::array> &inputs, std::vector
         throw std::runtime_error("quantized_matmul: N must be divisible by group_size");
     }
 
-    // Encode matrix parameters
+    // Encode matrix parameters to be used by the kernel.
     compute_encoder.set_bytes(M, 5);
     compute_encoder.set_bytes(N, 6);
     compute_encoder.set_bytes(K, 7);
 
+    // Get the maximum number of threads per threadgroup.
     size_t tgp_size = kernel->maxTotalThreadsPerThreadgroup();
     const int x_size = 32;
     const int y_size = tgp_size / x_size;
     if (tgp_size < x_size * y_size) {
         throw std::runtime_error("quantized_matmul: tgp_size must be larger than x*y");
     }
+    // Define the grid and threadgroup dimensions.
     MTL::Size num_threadgroups = MTL::Size((M + x_size - 1) / x_size, (K + y_size - 1) / y_size, 1);
     MTL::Size num_threads_per_group = MTL::Size(x_size, y_size, 1);
 

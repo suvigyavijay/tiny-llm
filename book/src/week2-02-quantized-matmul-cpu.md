@@ -6,6 +6,23 @@ We will focus on a CPU implementation of quantized matrix multiplication. While 
 
 [📚 Reading: What is quantization?](https://huggingface.co/docs/optimum/concept_guides/quantization)
 
+```mermaid
+graph TD
+    A[Weight Matrix] --> B{Quantize};
+    B --> C[Quantized Weights];
+    B --> D[Scales];
+    B --> E[Biases];
+    
+    subgraph Quantized Matmul
+        F[Input Matrix] --> G{Dequantize & Multiply};
+        C --> G;
+        D --> G;
+        E --> G;
+    end
+    
+    G --> H[Output Matrix];
+```
+
 ## Task 1: Implement `quantized_matmul` on CPU
 
 Your first task is to implement the `quantized_matmul` function in C++. This function will perform matrix multiplication where one of the matrices (the weights) is quantized.
@@ -14,7 +31,7 @@ Your first task is to implement the `quantized_matmul` function in C++. This fun
 src/extensions/src/quantized_matmul.cpp
 ```
 
-The function will take the quantized weights, along with their scales and biases, and multiply them with the input matrix. The core of the implementation will be a nested loop that iterates over the dimensions of the matrices and performs the dequantization and multiplication for each element.
+The function will take the quantized weights, along with their scales and biases, and multiply them with the input matrix. The core of the implementation will be a nested loop that iterates over the dimensions of the matrices and performs the dequantization and multiplication for each element. The dequantization formula is `dequantized_value = quantized_value * scale + bias`.
 
 You will need to implement the `quantized_matmul_impl` function, which contains the main logic for the CPU computation. The provided code already handles the Metal implementation for GPU, so you can focus on the CPU part.
 
