@@ -48,6 +48,26 @@ def quantized_matmul(
     b: mx.array,
     transpose_b: bool = False,
 ) -> mx.array:
+    """
+    Perform quantized matrix multiplication.
+    
+    TODO: Implement quantized matrix multiplication
+    - This should call the C++/Metal extension for efficient computation
+    - Use the tiny_llm_ext.quantized_matmul function from the extensions
+    - Handle the tensor reshaping appropriately
+    
+    Args:
+        scales: Per-group scale factors
+        biases: Per-group bias terms
+        group_size: Number of weights per quantization group
+        bits: Number of bits for quantization (typically 4)
+        a: Input tensor 
+        b: Quantized weight tensor
+        transpose_b: Whether to transpose b before multiplication
+        
+    Returns:
+        Result of quantized matrix multiplication
+    """
     pass
 
 
@@ -56,4 +76,20 @@ def quantized_linear(
     w: QuantizedWeights,
     bias: mx.array | None = None,
 ) -> mx.array:
+    """
+    Perform quantized linear transformation.
+    
+    TODO: Implement quantized linear layer
+    - Use quantized_matmul with the QuantizedWeights parameters
+    - Add bias if provided
+    - Handle proper tensor shapes for batched inputs
+    
+    Args:
+        x: Input tensor [batch_size, seq_len, hidden_size]
+        w: Quantized weights containing scales, biases, and quantized weight data
+        bias: Optional bias term
+        
+    Returns:
+        Output of linear transformation
+    """
     pass
