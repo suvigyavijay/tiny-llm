@@ -2,6 +2,9 @@ import pytest
 import mlx.core as mx
 from .tiny_llm_base import *
 from .utils import *
+from tiny_llm_ref.batch import batch_generate
+from tiny_llm_ref.qwen2_week2 import Qwen2ModelWeek2
+from mlx_lm import load
 
 
 def attention_helper(
@@ -129,3 +132,35 @@ def test_attention_with_mask_gpu():
 
 def test_attention_with_mask_gpu_large():
     attention_helper(mx.gpu, 28, 4, 16, 128, 16, 3, use_flash_attention=False)
+
+
+@pytest.mark.skipif(
+    not qwen_2_05b_model_exists(), reason="Qwen2-0.5B-Instruct-MLX model not found"
+)
+class TestTask1:
+    def test_batch_generate_single(self):
+        mlx_model, tokenizer = load("Qwen/Qwen2-0.5B-Instruct-MLX")
+        model = Qwen2ModelWeek2(mlx_model)
+        prompts = ["hello"]
+        result = batch_generate(model, tokenizer, prompts, max_seq_len=10)
+        assert len(result) == 1
+        assert "hello" in result[0][1]
+
+    def test_batch_generate_multiple(self):
+        mlx_model, tokenizer = load("Qwen/Qwen2-0.5B-Instruct-MLX")
+        model = Qwen2ModelWeek2(mlx_model)
+        prompts = ["hello", "how are you"]
+        result = batch_generate(model, tokenizer, prompts, max_seq_len=20)
+        assert len(result) == 2
+        # sort by prompt index
+        result.sort(key=lambda x: x[0])
+        assert "hello" in result[0][1]
+        assert "how are you" in result[1][1]
+
+    def test_batch_generate_long_prompt(self):
+        mlx_model, tokenizer = load("Qwen/Qwen2-0.5B-Instruct-MLX")
+        model = Qwen2ModelWeek2(mlx_model)
+        prompts = ["this is a very long prompt that will require multiple prefill steps to process"]
+        result = batch_generate(model, tokenizer, prompts, max_seq_len=50, prefill_step=10)
+        assert len(result) == 1
+        assert "this is a very long prompt" in result[0][1]

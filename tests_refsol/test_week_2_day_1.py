@@ -6,10 +6,57 @@ from .tiny_llm_base import (
     dequantize_linear,
     qwen2_week2,
     TinyKvFullCache,
+    TinyKvCache,
 )
 from mlx_lm import load
 
 # TODO: task 1 tests
+
+
+class TestTask1:
+    def test_kv_cache_simple(self):
+        cache = TinyKvFullCache()
+        key = mx.ones((1, 8, 1, 32))
+        value = mx.ones((1, 8, 1, 32))
+        new_key, new_value, _, _ = cache.update_and_fetch(key, value)
+        assert new_key.shape == (1, 8, 1, 32)
+        assert new_value.shape == (1, 8, 1, 32)
+        assert mx.array_equal(new_key, key)
+        
+        key_2 = mx.zeros((1, 8, 1, 32))
+        value_2 = mx.zeros((1, 8, 1, 32))
+        new_key_2, new_value_2, _, _ = cache.update_and_fetch(key_2, value_2)
+        assert new_key_2.shape == (1, 8, 2, 32)
+        assert new_value_2.shape == (1, 8, 2, 32)
+        assert mx.array_equal(new_key_2, mx.concatenate([key, key_2], axis=2))
+
+    def test_kv_cache_prefill(self):
+        cache = TinyKvFullCache()
+        key = mx.ones((1, 8, 10, 32))
+        value = mx.ones((1, 8, 10, 32))
+        new_key, new_value, _, _ = cache.update_and_fetch(key, value)
+        assert new_key.shape == (1, 8, 10, 32)
+        assert new_value.shape == (1, 8, 10, 32)
+        assert mx.array_equal(new_key, key)
+        
+        key_2 = mx.zeros((1, 8, 1, 32))
+        value_2 = mx.zeros((1, 8, 1, 32))
+        new_key_2, new_value_2, _, _ = cache.update_and_fetch(key_2, value_2)
+        assert new_key_2.shape == (1, 8, 11, 32)
+        assert new_value_2.shape == (1, 8, 11, 32)
+        assert mx.array_equal(new_key_2, mx.concatenate([key, key_2], axis=2))
+        
+    def test_offset_update(self):
+        cache = TinyKvFullCache()
+        assert cache.get_offset() == 0
+        key = mx.zeros((1, 8, 5, 32))
+        value = mx.zeros((1, 8, 5, 32))
+        cache.update_and_fetch(key, value)
+        assert cache.get_offset() == 5
+        key = mx.zeros((1, 8, 3, 32))
+        value = mx.zeros((1, 8, 3, 32))
+        cache.update_and_fetch(key, value)
+        assert cache.get_offset() == 8
 
 
 @pytest.mark.skipif(

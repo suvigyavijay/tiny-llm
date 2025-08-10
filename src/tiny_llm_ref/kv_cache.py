@@ -5,6 +5,9 @@ import mlx.core as mx
 
 
 class TinyKvCache:
+    """
+    The base class for all KV cache implementations.
+    """
     def update_and_fetch(
         self,
         key: mx.array,
@@ -16,6 +19,11 @@ class TinyKvCache:
 
 
 class BatchingKvCache(TinyKvCache):
+    """
+    A batching KV cache that manages multiple TinyKvCache instances.
+    This is useful when you have a large number of active requests,
+    as it allows you to manage them efficiently.
+    """
     def __init__(self, max_active_requests: int, max_seq_len: int):
         self.max_active_requests = max_active_requests
         self.max_seq_len = max_seq_len
@@ -46,7 +54,7 @@ class BatchingKvCache(TinyKvCache):
             )
             data.append((new_key[0], new_value[0], seq_len, mask))
 
-        # Step 2: compute seq_len of this batch
+        # Step 2: compute the max sequence length of the batch
         def get_seq_len(data):
             if data is None:
                 return 0
@@ -55,6 +63,7 @@ class BatchingKvCache(TinyKvCache):
 
         seq_len = max(map(get_seq_len, data))
         # Step 3: generate masks and a single array of keys and values
+        # by padding the individual caches to the max sequence length.
         keys = mx.zeros((self.max_active_requests, H, seq_len, D), dtype=key.dtype)
         values = mx.zeros((self.max_active_requests, H, seq_len, D), dtype=value.dtype)
         masks = mx.full(
@@ -98,6 +107,11 @@ class BatchingKvCache(TinyKvCache):
 
 
 class TinyKvFullCache(TinyKvCache):
+    """
+    A simple KV cache that stores the full sequence of keys and values.
+    This is the most straightforward implementation of a KV cache, but it can be
+    inefficient for very long sequences as it stores the entire history.
+    """
     def __init__(self):
         self.key_values = None
         self.offset = 0
