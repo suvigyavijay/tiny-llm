@@ -38,9 +38,9 @@ using namespace metal;
         out_vec[d] = 0;
     }
 
-    // Two-pass approach for stable softmax
-    // First pass: find max_score
     float max_score = -FLT_MAX;
+    float exp_sum = 0.0;
+
     for (int j = 0; j <= i; ++j) {
         int page_idx = page_table[j / page_size];
         int page_offset = j % page_size;
@@ -55,24 +55,14 @@ using namespace metal;
         score /= sqrt(float(head_dim));
         
         if (score > max_score) {
+            float old_max_score = max_score;
             max_score = score;
+            float scale = exp(old_max_score - max_score);
+            exp_sum *= scale;
+            for (int d = 0; d < head_dim; ++d) {
+                out_vec[d] *= scale;
+            }
         }
-    }
-
-    // Second pass: compute exp_sum and weighted values
-    float exp_sum = 0.0;
-    for (int j = 0; j <= i; ++j) {
-        int page_idx = page_table[j / page_size];
-        int page_offset = j % page_size;
-
-        int k_offset = page_idx * n_heads * page_size * head_dim + h * page_size * head_dim + page_offset * head_dim;
-        device const float* k_vec = k_cache + k_offset;
-        
-        float score = 0.0;
-        for (int d = 0; d < head_dim; ++d) {
-            score += q_vec[d] * k_vec[d];
-        }
-        score /= sqrt(float(head_dim));
 
         float attention_weight = exp(score - max_score);
         exp_sum += attention_weight;

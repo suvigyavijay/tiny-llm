@@ -21,27 +21,32 @@ def paged_attention_ref_py(q, k_cache, v_cache, page_table):
 
     for b in range(B):
         for h in range(n_heads):
-            # Reconstruct the key and value sequences for the head
-            keys = []
-            values = []
-            for page_idx in page_table_np:
-                keys.append(k_cache_np[page_idx, h, :, :])
-                values.append(v_cache_np[page_idx, h, :, :])
-            
-            k_seq = np.concatenate(keys, axis=0)[:seq_len]
-            v_seq = np.concatenate(values, axis=0)[:seq_len]
+            k_seq = np.concatenate([k_cache_np[p, h] for p in page_table_np], axis=0)[:seq_len]
+            v_seq = np.concatenate([v_cache_np[p, h] for p in page_table_np], axis=0)[:seq_len]
 
             for i in range(seq_len):
-                query_vector = q_np[b, h, i, :]
+                q_vec = q_np[b, h, i, :]
                 
-                # Apply causal mask by slicing keys and values
-                causal_k = k_seq[:i+1, :]
-                causal_v = v_seq[:i+1, :]
+                out_vec = np.zeros(head_dim, dtype=np.float32)
+                max_score = -np.inf
+                exp_sum = 0.0
+
+                for j in range(i + 1):
+                    k_vec = k_seq[j, :]
+                    score = (q_vec @ k_vec) / np.sqrt(head_dim)
+
+                    if score > max_score:
+                        old_max_score = max_score
+                        max_score = score
+                        scale = np.exp(old_max_score - max_score)
+                        exp_sum *= scale
+                        out_vec *= scale
+                    
+                    attention_weight = np.exp(score - max_score)
+                    exp_sum += attention_weight
+                    out_vec += attention_weight * v_seq[j, :]
                 
-                scores = (query_vector @ causal_k.T) / np.sqrt(head_dim)
-                attention_weights = softmax_np(scores)
-                
-                output[b, h, i, :] = attention_weights @ causal_v
+                output[b, h, i, :] = out_vec / exp_sum
                 
     return mx.array(output)
 

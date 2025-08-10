@@ -1,28 +1,29 @@
-# Week 3 Day 2: Paged Attention - Function
+# Week 3 Day 2: Paged Attention - Part 2
 
 In the previous chapter, we laid the groundwork for our paged attention implementation by creating the necessary data structures. Now, it's time to build the core of the paged attention algorithm: the custom attention kernel.
 
-## Task: Implement the Paged Attention Kernel
+## Task 1: Implement the Paged Attention Kernel
 
-Your main task in this chapter is to implement the paged attention kernel in Metal and the C++ function that launches it. We have included tests for various sequence lengths, head dimensions, page sizes, and number of pages.
+Your main task in this chapter is to implement the paged attention kernel in Metal. This kernel will be responsible for performing the attention computation on the paged KV cache.
 
 ```
 src/extensions/src/paged_attention.metal
+```
+
+The paged attention kernel is more complex than a standard attention kernel. It uses a one-pass approach to compute the softmax function in a numerically stable way. This is achieved by keeping track of the running maximum score and rescaling the accumulated values whenever a new maximum is found. This avoids a second pass over the data and improves performance.
+
+## Task 2: Implement the C++ Launch Function
+
+After implementing the Metal kernel, you will need to write the C++ function that launches it.
+
+```
 src/extensions/src/paged_attention.cpp
 ```
 
-The paged attention kernel is more complex than a standard attention kernel. It needs to:
-1. Receive the query, the paged KV cache, and the page table as input.
-2. Use the page table to look up the physical memory addresses of the KV cache pages for each sequence.
-3. Perform the attention computation, taking into account the non-contiguous memory layout of the paged cache.
-
-For a numerically stable softmax, the kernel uses a two-pass approach. The first pass finds the maximum score for each query-key dot product. The second pass computes the exponential of the scores, subtracts the max score, and then sums them up to get the denominator for the softmax. Finally, the attention weights are computed and multiplied by the value vectors.
-
 The C++ function will be responsible for:
 1. Setting up the Metal kernel and command encoder.
-2. Creating and populating the page table.
-3. Passing the query, KV cache, page table, and other necessary data to the kernel.
-4. Dispatching the kernel for execution.
+2. Passing the query, KV cache, page table, and other necessary data to the kernel.
+3. Dispatching the kernel for execution.
 
 After implementing the C++ and Metal code, you need to rebuild the extension:
 
