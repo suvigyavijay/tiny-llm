@@ -1,9 +1,11 @@
-name: CI (main)
+name: CI (main, gemini, claude)
 
 on:
   push:
     branches:
       - main
+      - gemini
+      - claude
 
 env:
   CARGO_TERM_COLOR: always
@@ -35,7 +37,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-22.04
-    if: github.repository == 'skyzh/tiny-llm'
+    if: github.repository == 'suvigyavijay/tiny-llm'
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
