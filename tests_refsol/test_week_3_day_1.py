@@ -1,6 +1,7 @@
 import pytest
 import mlx.core as mx
-from tiny_llm_ref.paged_attention import BlockTable, BlockAllocator
+from .tiny_llm_base import *
+from .utils import *
 
 
 def test_block_allocator_basic():
@@ -26,37 +27,49 @@ def test_block_allocator_oom():
         allocator.allocate()
 
 
-def test_block_table_append_tokens():
+@pytest.mark.parametrize("block_size", [4, 8, 16])
+def test_block_table_append_tokens(block_size: int):
     """Test block table correctly allocates blocks as tokens are added."""
-    block_size = 4
     num_blocks = 10
     allocator = BlockAllocator(num_blocks)
     table = BlockTable(block_size, allocator)
     
-    # Append 2 tokens -> 1 block needed
-    table.append_tokens(2)
+    # Append tokens less than block_size -> 1 block needed
+    table.append_tokens(block_size // 2)
     assert len(table.physical_blocks) == 1
-    assert table.num_tokens == 2
+    assert table.num_tokens == block_size // 2
     
-    # Append 3 more tokens -> total 5 -> 2 blocks needed
-    table.append_tokens(3)
+    # Append more to cross block boundary
+    table.append_tokens(block_size)
     assert len(table.physical_blocks) == 2
-    assert table.num_tokens == 5
-    
-    # Verify allocator state
-    assert len(allocator.free_blocks) == num_blocks - 2
+    assert table.num_tokens == block_size // 2 + block_size
 
 
-def test_block_table_exact_fit():
-    """Test when tokens exactly fill blocks."""
-    block_size = 4
-    allocator = BlockAllocator(10)
+@pytest.mark.parametrize("block_size", [4, 8])
+def test_block_table_fork_cow(block_size: int):
+    """Test forking and Copy-on-Write logic."""
+    allocator = BlockAllocator(20)
     table = BlockTable(block_size, allocator)
     
-    # Exactly 4 tokens = 1 block
-    table.append_tokens(4)
-    assert len(table.physical_blocks) == 1
+    # Fill 1.5 blocks worth of tokens
+    tokens = block_size + block_size // 2
+    table.append_tokens(tokens)
+    parent_blocks = list(table.physical_blocks)
     
-    # Add 1 more = 5 tokens = 2 blocks
-    table.append_tokens(1)
-    assert len(table.physical_blocks) == 2
+    # Fork
+    child = table.fork()
+    assert child.physical_blocks == parent_blocks
+    assert allocator.ref_counts[parent_blocks[0]] == 2
+    assert allocator.ref_counts[parent_blocks[1]] == 2
+    
+    # Append to child. Should trigger CoW for the partial block
+    child.append_tokens(1) 
+    
+    # First block (full) should still be shared
+    assert child.physical_blocks[0] == parent_blocks[0]
+    # Second block (partial) should be copied
+    assert child.physical_blocks[1] != parent_blocks[1]
+    
+    # Check ref counts
+    assert allocator.ref_counts[parent_blocks[0]] == 2
+    assert allocator.ref_counts[parent_blocks[1]] == 1

@@ -16,33 +16,34 @@ Agents use LLMs as reasoning engines to interact with the world. The core loop i
 3.  **Observation**: The environment executes the tool and returns `4`.
 4.  **Answer**: LLM sees the observation and produces the final answer.
 
-## Task 1: ReAct Loop
+## Task 1: Tool Registry
 
 ```
 src/tiny_llm/agent.py
 ```
 
-Implement a simple `Agent` class that:
-- Takes a system prompt defining available tools.
-- Runs the LLM.
-- Parses output for "Action:".
-- Executes the tool.
-- Feeds output back.
-
-### Implementation Pattern
+Implement a `ToolRegistry` to manage available tools.
 
 ```python
-while steps < max_steps:
-    response = model(history)
-    if "Final Answer" in response:
-        return response
-    
-    if "Action" in response:
-        # 1. Parse tool name and input
-        # 2. Execute tool function
-        # 3. Append "Observation: {result}" to history
-    else:
-        # Model is just thinking
+class ToolRegistry:
+    def register(self, tool):
+        pass
+        
+    def get_tool(self, name):
+        pass
+```
+
+## Task 2: ReAct Loop
+
+Implement the `Agent` class that uses the registry.
+
+```python
+class Agent:
+    def run(self, query):
+        # 1. Thought
+        # 2. Action (from registry)
+        # 3. Observation
+        # 4. Answer
         pass
 ```
 

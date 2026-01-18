@@ -49,6 +49,23 @@ class VectorStore:
         pass
 ```
 
+## Task 2: RAG Pipeline
+
+Implement a pipeline that combines retrieval and generation.
+
+```python
+class RAGPipeline:
+    def __init__(self, vector_store, llm_model):
+        pass
+        
+    def answer(self, query):
+        # 1. Embed query
+        # 2. Retrieve docs
+        # 3. Construct prompt: "Context: {docs}\nQuestion: {query}"
+        # 4. Generate answer
+        pass
+```
+
 ## Testing
 
 ```bash

@@ -10,16 +10,24 @@ class BlockAllocator:
     def __init__(self, num_blocks: int):
         self.num_blocks = num_blocks
         self.free_blocks = list(range(num_blocks))
+        self.ref_counts = [0] * num_blocks
 
     def allocate(self) -> int:
         """
         Pop a block index from the free list. Raise Error if full.
+        Initialize ref_count to 1.
         """
         pass
 
     def free(self, block_idx: int):
         """
-        Push a block index back to the free list.
+        Decrement ref_count. Push back to free list only if ref_count becomes 0.
+        """
+        pass
+
+    def add_ref(self, block_idx: int):
+        """
+        Increment ref_count for a block (used for prefix sharing).
         """
         pass
 
@@ -37,6 +45,14 @@ class BlockTable:
     def append_tokens(self, num_new_tokens: int):
         """
         Allocate new blocks if necessary to accommodate new tokens.
+        Handle Copy-on-Write for shared partial blocks.
+        """
+        pass
+
+    def fork(self) -> "BlockTable":
+        """
+        Create a new BlockTable sharing physical blocks (for beam search).
+        Increment ref_count for all shared blocks.
         """
         pass
 

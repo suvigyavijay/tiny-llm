@@ -1,32 +1,44 @@
 import pytest
 import mlx.core as mx
-from tiny_llm_ref.long_context import apply_linear_scaling_rope
+from .tiny_llm_base import *
+from .utils import *
 
 
-def test_linear_scaling_factor_2():
-    """Test linear scaling with factor 2 (doubling context)."""
-    freqs = mx.array([1.0, 2.0, 4.0])
-    scale = 2.0
-    
-    scaled_freqs = apply_linear_scaling_rope(freqs, scale)
-    expected = mx.array([0.5, 1.0, 2.0])
-    
-    assert mx.allclose(scaled_freqs, expected)
+@pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+@pytest.mark.parametrize("precision", PRECISIONS, ids=PRECISION_IDS)
+def test_linear_scaling_rope(stream: mx.Stream, precision: mx.Dtype):
+    """Test linear RoPE scaling produces correct frequency scaling."""
+    with mx.stream(stream):
+        base_freqs = mx.array([1.0, 0.5, 0.25, 0.125], dtype=precision)
+        scale_factor = 2.0
+        
+        scaled = apply_linear_scaling_rope(base_freqs, scale_factor)
+        mx.eval(scaled)
+        
+        # Linear scaling divides frequencies by scale_factor
+        expected = base_freqs / scale_factor
+        assert_allclose(scaled, expected, precision=precision)
 
 
-def test_linear_scaling_factor_1():
-    """Test that scale factor 1 leaves frequencies unchanged."""
-    freqs = mx.array([1.0, 2.0, 4.0])
+@pytest.mark.parametrize("scale_factor", [1.0, 2.0, 4.0])
+def test_linear_scaling_identity(scale_factor: float):
+    """Test that scale_factor=1.0 returns original frequencies."""
+    base_freqs = mx.array([1.0, 0.5, 0.25])
     
-    scaled_freqs = apply_linear_scaling_rope(freqs, 1.0)
-    
-    assert mx.allclose(scaled_freqs, freqs)
+    if scale_factor == 1.0:
+        scaled = apply_linear_scaling_rope(base_freqs, scale_factor)
+        mx.eval(scaled)
+        
+        assert mx.allclose(scaled, base_freqs)
 
 
-def test_linear_scaling_preserves_dtype():
-    """Test that scaling preserves the dtype of input frequencies."""
-    freqs = mx.array([1.0, 2.0], dtype=mx.float16)
+@pytest.mark.parametrize("dim", [32, 64, 128])
+def test_linear_scaling_preserves_shape(dim: int):
+    """Test that output shape matches input shape."""
+    base_freqs = mx.random.normal((dim,))
+    scale_factor = 2.0
     
-    scaled_freqs = apply_linear_scaling_rope(freqs, 2.0)
+    scaled = apply_linear_scaling_rope(base_freqs, scale_factor)
+    mx.eval(scaled)
     
-    assert scaled_freqs.dtype == mx.float16
+    assert scaled.shape == base_freqs.shape

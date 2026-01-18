@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Dict
 
 
 class Tool:
@@ -8,13 +8,23 @@ class Tool:
         self.description = description
 
 
+class ToolRegistry:
+    def __init__(self):
+        self.tools: Dict[str, Tool] = {}
+
+    def register(self, tool: Tool):
+        self.tools[tool.name] = tool
+
+    def get(self, name: str) -> Tool:
+        if name not in self.tools:
+            raise ValueError(f"Tool {name} not found")
+        return self.tools[name]
+
+
 class Agent:
-    """
-    A simple ReAct agent that can use tools.
-    """
-    def __init__(self, model, tools: List[Tool]):
-        self.model = model  # Function: prompt -> response string
-        self.tools = {t.name: t for t in tools}
+    def __init__(self, model, registry: ToolRegistry):
+        self.model = model
+        self.registry = registry
 
     def run(self, query: str, max_steps: int = 5) -> str:
         history = f"Question: {query}\n"
@@ -35,12 +45,10 @@ class Agent:
                     input_line = [l for l in lines if l.startswith("Action Input:")][0]
                     tool_input = input_line.split("Action Input:")[1].strip()
                     
-                    if tool_name in self.tools:
-                        result = self.tools[tool_name].func(tool_input)
-                        history += f"Observation: {result}\n"
-                    else:
-                        history += f"Observation: Tool {tool_name} not found\n"
+                    tool = self.registry.get(tool_name)
+                    result = tool.func(tool_input)
+                    history += f"Observation: {result}\n"
                 except Exception:
-                    history += "Observation: Invalid Action format\n"
+                    history += "Observation: Error executing tool\n"
                 
         return "Max steps reached"

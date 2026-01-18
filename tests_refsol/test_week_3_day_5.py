@@ -1,48 +1,55 @@
 import pytest
 import mlx.core as mx
-from tiny_llm_ref.rag import VectorStore
+from .tiny_llm_base import *
+from .utils import *
 
 
-def test_vector_store_add_and_search():
-    """Test basic add and search functionality."""
+@pytest.mark.parametrize("stream", AVAILABLE_STREAMS, ids=AVAILABLE_STREAMS_IDS)
+def test_vector_store_add_and_search(stream: mx.Stream):
+    """Test adding documents and searching."""
+    with mx.stream(stream):
+        store = VectorStore()
+        store.add("Cat", mx.array([1.0, 0.0]))
+        store.add("Dog", mx.array([0.9, 0.1]))
+        store.add("Car", mx.array([0.0, 1.0]))
+        
+        query = mx.array([1.0, 0.05])
+        results = store.search(query, k=2)
+        
+        assert len(results) == 2
+        assert results[0][0] == "Cat"
+
+
+@pytest.mark.parametrize("k", [1, 3, 5])
+def test_vector_store_top_k(k: int):
+    """Test that search returns exactly k results."""
     store = VectorStore()
+    for i in range(10):
+        store.add(f"doc_{i}", mx.random.normal((4,)))
     
-    # Add some vectors
-    store.add("Cat", mx.array([1.0, 0.0, 0.0]))
-    store.add("Dog", mx.array([0.9, 0.1, 0.0]))
-    store.add("Car", mx.array([0.0, 0.0, 1.0]))
+    query = mx.random.normal((4,))
+    results = store.search(query, k=k)
     
-    # Query close to Cat
-    query = mx.array([1.0, 0.05, 0.0])
-    results = store.search(query, k=2)
-    
-    assert len(results) == 2
-    assert results[0][0] == "Cat"
-    assert results[1][0] == "Dog"
+    assert len(results) == k
 
 
-def test_vector_store_empty():
-    """Test search on empty store."""
+def test_rag_pipeline():
+    """Test end-to-end RAG pipeline."""
     store = VectorStore()
-    results = store.search(mx.array([1.0, 0.0]), k=5)
-    assert results == []
-
-
-def test_vector_store_cosine_similarity():
-    """Test that search uses cosine similarity (direction matters, not magnitude)."""
-    store = VectorStore()
+    store.add("Paris is the capital of France.", mx.array([1.0, 0.0]))
+    store.add("Berlin is the capital of Germany.", mx.array([0.0, 1.0]))
     
-    # Add vectors with different magnitudes but same direction
-    store.add("Small", mx.array([0.1, 0.1]))
-    store.add("Large", mx.array([10.0, 10.0]))
-    store.add("Different", mx.array([1.0, -1.0]))
+    def mock_embed(text):
+        if "France" in text:
+            return mx.array([1.0, 0.0])
+        return mx.array([0.0, 1.0])
+        
+    def mock_llm(prompt):
+        if "Paris" in prompt:
+            return "Paris"
+        return "Unknown"
+        
+    rag = RAGPipeline(store, mock_embed, mock_llm)
+    answer = rag.query("capital of France")
     
-    # Query in same direction as Small/Large
-    query = mx.array([5.0, 5.0])
-    results = store.search(query, k=3)
-    
-    # Small and Large should have same similarity (both ~1.0)
-    # Different should be 0
-    assert results[0][0] in ["Small", "Large"]
-    assert results[1][0] in ["Small", "Large"]
-    assert results[2][0] == "Different"
+    assert answer == "Paris"

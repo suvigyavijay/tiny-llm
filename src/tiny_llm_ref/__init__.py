@@ -13,3 +13,10 @@ from .sampler import *
 from .kv_cache import *
 from .batch import *
 from .models import *
+# Week 3
+from .paged_attention import *
+from .moe import *
+from .speculative import *
+from .rag import *
+from .agent import *
+from .long_context import *

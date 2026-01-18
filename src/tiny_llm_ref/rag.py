@@ -1,5 +1,5 @@
 import mlx.core as mx
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 
 class VectorStore:
@@ -36,3 +36,24 @@ class VectorStore:
             results.append((self.texts[idx], scores[idx].item()))
             
         return results
+
+
+class RAGPipeline:
+    def __init__(self, vector_store: VectorStore, embedding_func: Callable, llm_func: Callable):
+        self.store = vector_store
+        self.embed = embedding_func
+        self.llm = llm_func
+
+    def query(self, question: str) -> str:
+        # 1. Embed query
+        q_emb = self.embed(question)
+        
+        # 2. Retrieve
+        hits = self.store.search(q_emb, k=2)
+        context = "\n".join([text for text, score in hits])
+        
+        # 3. Construct Prompt
+        prompt = f"Context:\n{context}\n\nQuestion: {question}\nAnswer:"
+        
+        # 4. Generate
+        return self.llm(prompt)

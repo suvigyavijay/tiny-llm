@@ -1,5 +1,5 @@
 import mlx.core as mx
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 
 class VectorStore:
@@ -22,5 +22,21 @@ class VectorStore:
         
         Returns:
             List of (text, score) tuples.
+        """
+        pass
+
+
+class RAGPipeline:
+    """
+    End-to-end RAG pipeline.
+    """
+    def __init__(self, vector_store: VectorStore, embedding_func: Callable, llm_func: Callable):
+        self.store = vector_store
+        self.embed = embedding_func
+        self.llm = llm_func
+
+    def query(self, question: str) -> str:
+        """
+        Retrieve context and generate answer.
         """
         pass

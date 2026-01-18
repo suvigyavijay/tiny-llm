@@ -8,23 +8,30 @@ class Tool:
         self.description = description
 
 
+class ToolRegistry:
+    """
+    Manages a collection of tools.
+    """
+    def __init__(self):
+        self.tools = {}
+
+    def register(self, tool: Tool):
+        pass
+
+    def get(self, name: str) -> Tool:
+        pass
+
+
 class Agent:
     """
     A simple ReAct agent that can use tools.
     """
-    def __init__(self, model, tools: List[Tool]):
+    def __init__(self, model, registry: ToolRegistry):
         self.model = model
-        self.tools = {t.name: t for t in tools}
+        self.registry = registry
 
     def run(self, query: str, max_steps: int = 5) -> str:
         """
         Run the ReAct loop.
-        
-        Args:
-            query: The user's question.
-            max_steps: Maximum number of thought-action-observation cycles.
-            
-        Returns:
-            The final answer string.
         """
         pass
