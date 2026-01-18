@@ -9,9 +9,10 @@ def test_speculative_decode_accepts_correct():
     
     # Mock models that always predict the same token
     def mock_target(tokens):
-        # Return logits that favor token 5
-        logits = mx.full((1, 10), -10.0)
-        logits = logits.at[:, 5].add(20.0)
+        # Return logits that favor token 5 (shape: [B, L, vocab])
+        B, L = tokens.shape
+        logits = mx.full((B, L, 10), -10.0)
+        logits = logits.at[:, :, 5].add(20.0)
         return logits
     
     def mock_draft(tokens):
@@ -29,13 +30,15 @@ def test_speculative_decode_rejects_wrong():
     """Test speculative decode rejects when draft differs from target."""
     
     def mock_target(tokens):
-        logits = mx.full((1, 10), -10.0)
-        logits = logits.at[:, 5].add(20.0)  # Target wants 5
+        B, L = tokens.shape
+        logits = mx.full((B, L, 10), -10.0)
+        logits = logits.at[:, :, 5].add(20.0)  # Target wants 5
         return logits
     
     def mock_draft(tokens):
-        logits = mx.full((1, 10), -10.0)
-        logits = logits.at[:, 7].add(20.0)  # Draft predicts 7
+        B, L = tokens.shape
+        logits = mx.full((B, L, 10), -10.0)
+        logits = logits.at[:, :, 7].add(20.0)  # Draft predicts 7
         return logits
     
     prompt = mx.array([[1, 2, 3]])

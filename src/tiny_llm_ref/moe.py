@@ -23,7 +23,11 @@ class MoELayer(nn.Module):
         gate_logits = self.gate(x)
         
         # Top-K selection
-        indices = mx.argpartition(-gate_logits, k, axis=-1)[..., :k]
+        # When k == num_experts, use argsort instead (argpartition requires k < size)
+        if k >= self.num_experts:
+            indices = mx.argsort(-gate_logits, axis=-1)[..., :k]
+        else:
+            indices = mx.argpartition(-gate_logits, k, axis=-1)[..., :k]
         scores = mx.take_along_axis(gate_logits, indices, axis=-1)
         weights = mx.softmax(scores, axis=-1)
         
