@@ -20,7 +20,14 @@
     - [Flash Attention - CPU](./week2-04-flash-attention-cpu.md)
     - [Flash Attention - GPU](./week2-05-flash-attention-gpu.md)
     - [Continuous Batching (2 Days)](./week2-06-prefill-and-batch.md)
-- [Week 3: Serving]()
+- [Week 3: Serving](./week3-overview.md)
+    - [Paged Attention - Part 1](./week3-01-paged-attention-part1.md)
+    - [Paged Attention - Part 2](./week3-02-paged-attention-part2.md)
+    - [MoE (Mixture of Experts)](./week3-03-moe.md)
+    - [Speculative Decoding](./week3-04-speculative-decoding.md)
+    - [RAG Pipeline](./week3-05-rag-pipeline.md)
+    - [AI Agent / Tool Calling](./week3-06-agent-tool-calling.md)
+    - [Long Context](./week3-07-long-context.md)
 
 ---
 

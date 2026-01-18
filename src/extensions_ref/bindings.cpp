@@ -45,4 +45,23 @@ NB_MODULE(_ext, m) {
         Returns:
             array: ``softmax(query @ key.T * scale) @ value``
       )");
+    m.def("paged_attention", &tiny_llm_ext_ref::paged_attention, "query"_a, "key_cache"_a, "value_cache"_a,
+          "block_tables"_a, "context_lens"_a, "block_size"_a, "scale"_a, "num_kv_heads"_a, "num_heads"_a,
+          "stream"_a = nb::none(), R"(
+        Paged attention layer
+
+        Args:
+            query (array): Query array [batch, num_heads, head_dim].
+            key_cache (array): Key cache [num_blocks, block_size, num_kv_heads, head_dim].
+            value_cache (array): Value cache [num_blocks, block_size, num_kv_heads, head_dim].
+            block_tables (array): Block tables [batch, max_blocks_per_seq].
+            context_lens (array): Context lengths [batch].
+            block_size (int): Block size.
+            scale (float): Scaling factor.
+            num_kv_heads (int): Number of KV heads.
+            num_heads (int): Number of attention heads.
+
+        Returns:
+            array: Output array [batch, num_heads, head_dim]
+      )");
 }
